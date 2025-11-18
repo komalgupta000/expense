@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Expense Tracker</title>
+</head>
+<style>
+    body {
+    font-family: Poppins, sans-serif;
+    background: linear-gradient(135deg, #dfe9f3, #ffffff);
+    min-height: 100vh;
+    /* height: auto; */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 0;
+}
+
+.container {
+    width: 600px;
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(12px);
+    padding: 30px;
+    border-radius: 18px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    border: 1px solid rgba(255,255,255,0.4);
+}
+
+h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+.form-box input,
+.form-box select {
+    width: 100%;
+    padding: 12px;
+    margin: 8px 0;
+    border-radius: 10px;
+    border: 1px solid #ccc;
+    background: #ffffffd9;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    font-size: 15px;
+    box-sizing: border-box;   
+}
+/* @media (max-width: 992px){
+    .form-box{
+        width: 100%;
+        height: 100vh !important;
+    }
+} */
+
+.form-box button {
+    width: 100%;
+    padding: 12px;
+    background: #111;
+    color: white;
+    border-radius: 10px;
+    font-size: 16px;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: .2s;
+}
+
+.form-box button:hover {
+    background: #333;
+}
+
+.filters {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 25px;
+}
+
+.filters select,
+.filters button {
+    flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    border: none;
+}
+
+.filters button {
+    background: #111;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: .2s;
+}
+
+.filters button:hover {
+    background: #333;
+}
+table {
+    width: 100%;
+    margin-top: 25px;
+    border-collapse: collapse;
+    background: white;
+    overflow: hidden;
+    border-radius: 12px;
+    box-shadow: 0 3px 15px rgba(0,0,0,0.1);
+}
+
+th {
+    background: #111;
+    color: white;
+    padding: 12px;
+    font-size: 15px;
+}
+
+td {
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+}
+
+tr:hover {
+    background: #f5f5f5;
+}
+
+
+</style>
+<body>
+
+<div class="container">
+
+    <h2>Expense Tracker</h2>
+
+    <div class="form-box">
+        <input type="text" id="title" placeholder="Expense Title">
+        <input type="number" id="amount" placeholder="Amount">
+
+        <select id="category">
+            <option>Food</option>
+            <option>Travel</option>
+            <option>Shopping</option>
+            <option>Other</option>
+        </select>
+
+        <input type="date" id="date">
+
+        <button onclick="addExpense()">Add</button>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters">
+        <select id="monthFilter" onchange="filterExpenses()">
+            <option value="">All Months</option>
+            <option value="01">January</option>
+            <option value="02">February</option>
+            <option value="03">March</option>
+            <option value="04">April</option>
+            <option value="05">May</option>
+            <option value="06">June</option>
+            <option value="07">July</option>
+            <option value="08">August</option>
+            <option value="09">September</option>
+            <option value="10">October</option>
+            <option value="11">November</option>
+            <option value="12">December</option>
+        </select>
+
+        <button onclick="exportPDF()">Export to PDF</button>
+    </div>
+
+    <!-- Expense List -->
+    <table id="expenseTable">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Amount</th>
+                <th>Category</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody id="expenseList"></tbody>
+    </table>
+
+</div>
+
+<!-- Add this CDN before your script -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+
+<script>
+    let expenses = JSON.parse(localStorage.getItem("expenses")) || [];
+
+function addExpense() {
+    const title = document.getElementById("title").value;
+    const amount = document.getElementById("amount").value;
+    const category = document.getElementById("category").value;
+    const date = document.getElementById("date").value;
+
+    if (!title || !amount || !date) return alert("Please fill all fields");
+
+    expenses.push({ title, amount, category, date });
+
+    localStorage.setItem("expenses", JSON.stringify(expenses));
+
+    showExpenses();
+}
+
+function showExpenses(filtered = expenses) {
+    const list = document.getElementById("expenseList");
+    list.innerHTML = "";
+
+    filtered.forEach(e => {
+        list.innerHTML += `
+            <tr>
+                <td>${e.title}</td>
+                <td>${e.amount}</td>
+                <td>${e.category}</td>
+                <td>${e.date}</td>
+            </tr>
+        `;
+    });
+}
+
+function filterExpenses() {
+    const month = document.getElementById("monthFilter").value;
+
+    if (!month) return showExpenses();
+
+    const filtered = expenses.filter(e => e.date.split("-")[1] === month);
+
+    showExpenses(filtered);
+}
+
+function exportPDF() {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF();
+
+    pdf.text("Expense Report", 14, 15); // Title
+
+    // Table columns
+    const headers = [["Title", "Amount", "Category", "Date"]];
+
+    // Convert JS array into table rows
+    const rows = expenses.map(e => [e.title, e.amount, e.category, e.date]);
+
+    // AutoTable create
+    pdf.autoTable({
+        head: headers,
+        body: rows,
+        startY: 25,
+        styles: {
+            fontSize: 10,
+        },
+        headStyles: {
+            fillColor: [0, 0, 0],  // Black heading
+            textColor: [255, 255, 255]
+        }
+    });
+
+    pdf.save("Expenses.pdf");
+}
+
+
+</script>
+
+</body>
+</html>
